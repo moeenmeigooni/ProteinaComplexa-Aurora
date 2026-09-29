@@ -16,6 +16,10 @@ case $- in
   *u*) _proteina_restore_nounset=1; set +u ;;
 esac
 module load frameworks
+# The bundled AF2 JAX/OpenXLA plugin uses oneMKL/SYCL sonames from this
+# supported runtime release.  Aurora PE 26.181.0's default oneAPI 2026 runtime
+# no longer provides those sonames.
+module load oneapi/release/2025.3.1
 if [[ "${_proteina_restore_nounset}" == 1 ]]; then
   set -u
 fi
