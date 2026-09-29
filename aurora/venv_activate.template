@@ -16,10 +16,13 @@ case $- in
   *u*) _proteina_restore_nounset=1; set +u ;;
 esac
 module load frameworks
+_proteina_framework_ld_library_path="${LD_LIBRARY_PATH:-}"
 # The bundled AF2 JAX/OpenXLA plugin uses oneMKL/SYCL sonames from this
 # supported runtime release.  Aurora PE 26.181.0's default oneAPI 2026 runtime
 # no longer provides those sonames.
 module load oneapi/release/2025.3.1
+export LD_LIBRARY_PATH="${_proteina_framework_ld_library_path}:${LD_LIBRARY_PATH:-}"
+unset _proteina_framework_ld_library_path
 if [[ "${_proteina_restore_nounset}" == 1 ]]; then
   set -u
 fi
