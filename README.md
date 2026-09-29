@@ -7,6 +7,26 @@ This repository includes an Aurora port for Intel XPU accelerators. See
 end-to-end run instructions. Original and third-party license notices are
 preserved in [`licenses/`](licenses/).
 
+### Quick installation on Aurora
+
+Run these commands on an Aurora login node. Keep the checkout and environment
+on shared project storage; change `FRAME-IDP` if your allocation uses another
+project directory. `--weights` downloads the full set of model checkpoints
+(about 50 GB), so allow time and storage for the first install.
+
+```bash
+export AURORA_PROJECT_ROOT="/lus/flare/projects/FRAME-IDP/${USER}"
+mkdir -p "$AURORA_PROJECT_ROOT"
+cd "$AURORA_PROJECT_ROOT"
+git clone https://github.com/moeenmeigooni/ProteinaComplexa-Aurora.git
+cd ProteinaComplexa-Aurora
+bash aurora/bootstrap_aurora.sh --weights
+```
+
+The bootstrap loads Aurora's XPU framework, installs the tested environment,
+and creates its activation setup. For smoke jobs and the first design, see
+[Aurora setup and run instructions](aurora/README.md).
+
 <div align="center">
   <a href="https://kdidi.netlify.app/" target="_blank">Kieran&nbsp;Didi</a><sup>*</sup> &emsp;
   <a href="https://oxer11.github.io/" target="_blank">Zuobai&nbsp;Zhang</a><sup>*</sup> &emsp;
