@@ -5,6 +5,13 @@ CUDA, NVIDIA containers, CUDA PyTorch wheels, or CUDA-only PyG extensions.
 
 ## Installation
 
+Clone the Aurora port and enter its checkout:
+
+```bash
+git clone https://github.com/moeenmeigooni/ProteinaComplexa-Aurora.git
+cd ProteinaComplexa-Aurora
+```
+
 Set `AURORA_PROJECT_ROOT` to a shared project directory visible from both the
 login and compute nodes. By default, the scripts use
 `/lus/flare/projects/FRAME-IDP/$USER`. The checkout can live anywhere on shared
