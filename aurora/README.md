@@ -22,7 +22,7 @@ On an Aurora UAN, run:
 
 ```bash
 export AURORA_PROJECT_ROOT="/lus/flare/projects/FRAME-IDP/${USER}"
-bash aurora/bootstrap_aurora.sh
+bash aurora/install_aurora.sh
 ```
 
 This creates a `venv --system-site-packages` over `module load frameworks`.
@@ -36,7 +36,7 @@ RF3), add `--weights`.  Allow roughly 50 GB. The downloads remain under the
 source checkout and are validated before being accepted as cached.
 
 ```bash
-bash aurora/bootstrap_aurora.sh --weights
+bash aurora/install_aurora.sh --weights
 ```
 
 ## Activation and cache policy

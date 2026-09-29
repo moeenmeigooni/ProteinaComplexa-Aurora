@@ -20,7 +20,7 @@ mkdir -p "$AURORA_PROJECT_ROOT"
 cd "$AURORA_PROJECT_ROOT"
 git clone https://github.com/moeenmeigooni/ProteinaComplexa-Aurora.git
 cd ProteinaComplexa-Aurora
-bash aurora/bootstrap_aurora.sh --weights
+bash aurora/install_aurora.sh --weights
 ```
 
 The bootstrap loads Aurora's XPU framework, installs the tested environment,

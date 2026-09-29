@@ -12,7 +12,7 @@ download_weights=false
 
 usage() {
   cat <<'EOF'
-Usage: aurora/bootstrap_aurora.sh [--env VENV_PREFIX] [--weights]
+Usage: aurora/install_aurora.sh [--env VENV_PREFIX] [--weights]
 
 Creates a venv which inherits Aurora's validated PyTorch/XPU runtime.  --weights
 downloads every Proteina-Complexa and community-model checkpoint, including

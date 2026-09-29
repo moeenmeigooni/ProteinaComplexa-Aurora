@@ -77,7 +77,7 @@ def _realign_sycl_saved_pdb(output_pdb: str, reference_pdb: str, target_chain: s
     except ImportError as exc:  # pragma: no cover - bootstrap installs this dependency
         raise RuntimeError(
             "rust-simulation-tools is required to realign AF2 SYCL PDB output. "
-            "Run aurora/bootstrap_aurora.sh to install the Aurora profile."
+            "Run aurora/install_aurora.sh to install the Aurora profile."
         ) from exc
 
     target_chains = tuple(chain.strip() for chain in target_chain.split(",") if chain.strip())
