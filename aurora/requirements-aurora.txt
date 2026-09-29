@@ -49,6 +49,7 @@ cytoolz
 hydride
 looseversion
 mmtf-python
+zstandard
 cpdb-protein==0.2.0
 mdtraj==1.10.2
 rdkit

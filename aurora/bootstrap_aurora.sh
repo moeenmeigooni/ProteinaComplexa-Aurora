@@ -52,7 +52,7 @@ python_bin="${env_prefix}/bin/python"
 # index.  The port must resolve auxiliary packages only from PyPI.
 if ! "${python_bin}" -c '
 import importlib.util
-names = ("atomworks", "bioservices", "biotraj", "cachebox", "contextlib2", "cytoolz", "etils", "humanize", "hydride", "jax", "jmp", "lightning", "looseversion", "ml_dtypes", "mmtf", "modin", "narwhals", "netCDF4", "numpy", "openbabel", "openmm", "opt_einsum", "orderly_set", "orbax", "prody", "proteinfoundation", "py3Dmol", "rdkit", "rich_click", "rust_simulation_tools", "tensorstore", "toolz", "torch_geometric", "wandb", "wadler_lindig", "xarray", "colabdesign")
+names = ("atomworks", "bioservices", "biotraj", "cachebox", "contextlib2", "cytoolz", "etils", "humanize", "hydride", "jax", "jmp", "lightning", "looseversion", "ml_dtypes", "mmtf", "modin", "narwhals", "netCDF4", "numpy", "openbabel", "openmm", "opt_einsum", "orderly_set", "orbax", "prody", "proteinfoundation", "py3Dmol", "rdkit", "rich_click", "rust_simulation_tools", "tensorstore", "toolz", "torch_geometric", "wandb", "wadler_lindig", "xarray", "zstandard", "colabdesign")
 missing = [name for name in names if importlib.util.find_spec(name) is None]
 if missing:
     raise SystemExit(1)
