@@ -1,0 +1,30 @@
+#!/bin/bash
+# Minimal real-model generation validation for the Aurora XPU port.
+# Produces one deliberately low-step PD-1 binder sample; it is a runtime check,
+# not a scientifically meaningful design campaign.
+#PBS -A FRAME-IDP
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:30:00
+#PBS -l filesystems=flare
+#PBS -j oe
+
+set -euo pipefail
+project_root="${AURORA_PROJECT_ROOT:-/lus/flare/projects/FRAME-IDP/${USER:-${LOGNAME:-user}}}"
+repo_dir="${PROTEINA_REPO:-${PBS_O_WORKDIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}}"
+env_prefix="${PROTEINA_ENV:-${project_root}/envs/proteina-complexa}"
+export ZE_FLAT_DEVICE_HIERARCHY=FLAT
+export ZE_AFFINITY_MASK="${ZE_AFFINITY_MASK:-0}"
+
+cd "${repo_dir}"
+source "${env_prefix}/bin/activate"
+complexa generate configs/search_binder_local_pipeline.yaml \
+  ++run_name=aurora_xpu_generate_smoke \
+  ++generation.task_name=01_PD1 \
+  ++generation.dataloader.batch_size=1 \
+  ++generation.dataloader.dataset.nres.low=80 \
+  ++generation.dataloader.dataset.nres.high=80 \
+  ++generation.dataloader.dataset.nres.nsamples=1 \
+  ++generation.search.algorithm=single-pass \
+  ++generation.search.max_batch_size=1 \
+  ++generation.args.nsteps=2

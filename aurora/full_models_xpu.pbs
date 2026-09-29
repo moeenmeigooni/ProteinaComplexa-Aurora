@@ -1,0 +1,84 @@
+#!/bin/bash
+# Added for the Aurora XPU port; see aurora/README.md.
+# End-to-end backend smoke test for the optional Proteina-Complexa models.
+# It runs one LigandMPNN design and a one-step RF3 fold on an Aurora XPU tile.
+# Outputs are runtime-validation artifacts, not scientific predictions.
+#PBS -A FRAME-IDP
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:45:00
+#PBS -l filesystems=flare
+#PBS -j oe
+
+set -euo pipefail
+project_root="${AURORA_PROJECT_ROOT:-/lus/flare/projects/FRAME-IDP/${USER:-${LOGNAME:-user}}}"
+repo_dir="${PROTEINA_REPO:-${PBS_O_WORKDIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}}"
+env_prefix="${PROTEINA_ENV:-${project_root}/envs/proteina-complexa}"
+# Keep each validation result isolated so a failed or interrupted run cannot
+# accidentally satisfy a later run's output checks.
+output_dir="${repo_dir}/aurora/full-models-xpu-smoke/${PBS_JOBID%%.*}"
+export ZE_FLAT_DEVICE_HIERARCHY=FLAT
+export ZE_AFFINITY_MASK="${ZE_AFFINITY_MASK:-0}"
+
+cd "${repo_dir}"
+source "${env_prefix}/bin/activate"
+
+python - <<'PY'
+import foundry
+import rf3
+import torch
+
+assert torch.xpu.is_available(), "This test must run in an Aurora GPU-tile job"
+assert not torch.cuda.is_available(), "Aurora port must not use CUDA"
+assert foundry.SHOULD_USE_CUEQUIVARIANCE is False
+print(f"XPU={torch.xpu.get_device_name(0)}")
+print(f"RF3={rf3.__file__}")
+print("Foundry CUDA-only cuequivalence correctly disabled")
+PY
+
+cd "${repo_dir}/community_models/LigandMPNN"
+# This repository fixture contains both protein atoms and ligand HETATM records;
+# unlike the former 1BC8 placeholder, it is present in every clone.
+python run.py \
+  --model_type ligand_mpnn \
+  --pdb_path ../../assets/target_data/ame_input_structures/M0024_1nzy_v3.pdb \
+  --out_folder "${output_dir}/ligandmpnn" \
+  --batch_size 1 \
+  --number_of_batches 1 \
+  --seed 7 \
+  --verbose 0
+ligand_backbone="$(find "${output_dir}/ligandmpnn/backbones" -type f -name '*.pdb' -print -quit)"
+test -n "${ligand_backbone}"
+test -s "$(find "${output_dir}/ligandmpnn/seqs" -type f -name '*.fa' -print -quit)"
+
+# TMol itself is CPU-only on Aurora.  Exercise its real score path while this
+# job has already proved native XPU operation for the generative components.
+cd "${repo_dir}"
+tmol_input="$(find "${repo_dir}/inference/search_binder_local_pipeline_01_PD1_aurora_xpu_generate_smoke" -type f -name '*.pdb' -print -quit)"
+test -n "${tmol_input}"
+export TMOL_TEST_PDB="${tmol_input}"
+python - <<'PY'
+import os
+import torch
+from proteinfoundation.rewards.tmol_reward import TmolRewardModel
+
+model = TmolRewardModel(device=torch.device("xpu"), enable_hbond=True)
+assert model.device.type == "cpu"
+result = model.score(pdb_path=os.environ["TMOL_TEST_PDB"], requires_grad=False)
+assert result["total_reward"].numel() == 1
+assert result["reward"]["n_interface_pairs"].item() > 0
+print(f"tmol_cpu_interface_reward={result['total_reward'].item():.6f}")
+PY
+
+rf3 fold \
+  "inputs=${ligand_backbone}" \
+  "ckpt_path=${RF3_CKPT_PATH}" \
+  "out_dir=${output_dir}/rf3" \
+  "n_recycles=1" \
+  "diffusion_batch_size=1" \
+  "num_steps=1" \
+  "early_stopping_plddt_threshold=0" \
+  "dump_trajectories=false"
+
+test -n "$(find "${output_dir}/rf3" -type f -name '*_model.cif' -print -quit)"
+echo "full_optional_model_xpu_smoke=passed"

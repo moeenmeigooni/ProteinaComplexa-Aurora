@@ -1,0 +1,28 @@
+# Added for the Aurora XPU port; see aurora/README.md.
+# Foundry/RF3's pure-PyTorch XPU path.
+#
+# Do not install ``rc-foundry[rf3]`` or ``rc-foundry[all]`` on Aurora: both
+# extras require cuequivariance-ops-*-cu12, which are NVIDIA CUDA extensions.
+# Foundry imports those operators only for torch.cuda; its documented XPU path
+# uses the native PyTorch fallback instead.  ``--no-deps`` is mandatory when
+# installing this file so pip cannot replace Aurora's framework-provided XPU
+# PyTorch with a PyPI CUDA build.
+rc-foundry==0.2.0
+assertpy
+beartype<1,>=0.18.0
+einops<1,>=0.8.0
+einx<1,>=0.1.0
+environs<12,>=11.0.0
+ipykernel>=6.31.0
+rootutils<1.1,>=1.0.7
+
+# Transitive dependencies of the preceding pure-Python packages that are not
+# supplied by Aurora's frameworks module.
+frozendict
+marshmallow>=3.13.0
+comm>=0.1.1
+debugpy>=1.6.5
+jupyter-client>=8.9.0
+jupyter-core>=5.1
+nest-asyncio2>=1.7.0
+tornado>=6.4.1

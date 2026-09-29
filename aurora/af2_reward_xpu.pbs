@@ -1,0 +1,83 @@
+#!/bin/bash
+# Added for the Aurora XPU port; see aurora/README.md.
+# Exercise Proteina's real AF2-Multimer reward on Aurora's JAX/SYCL backend.
+# This is a functional installation check, not a scientific prediction.
+#PBS -A FRAME-IDP
+#PBS -q debug
+#PBS -l select=1
+# One AF2-Multimer reward with one recycle is a short functional smoke.
+#PBS -l walltime=00:30:00
+#PBS -l filesystems=flare
+#PBS -j oe
+
+set -euo pipefail
+project_root="${AURORA_PROJECT_ROOT:-/lus/flare/projects/FRAME-IDP/${USER:-${LOGNAME:-user}}}"
+repo_dir="${PROTEINA_REPO:-${PBS_O_WORKDIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}}"
+env_prefix="${PROTEINA_ENV:-${project_root}/envs/proteina-complexa}"
+fixture="${repo_dir}/assets/target_data/alpha_proteo_targets/1bj1_cropped.pdb"
+output_dir="${repo_dir}/aurora/af2-reward-xpu-smoke/${PBS_JOBID%%.*}"
+export ZE_FLAT_DEVICE_HIERARCHY=FLAT
+export ZE_AFFINITY_MASK="${ZE_AFFINITY_MASK:-0}"
+
+cd "${repo_dir}"
+source "${env_prefix}/bin/activate"
+mkdir -p "${output_dir}"
+export AF2_TEST_FIXTURE="${fixture}"
+export AF2_TEST_OUTPUT="${output_dir}"
+
+python - <<'PY'
+import os
+from pathlib import Path
+
+import jax
+import torch
+from proteinfoundation.rewards.alphafold2_reward import AF2RewardModel
+
+assert torch.xpu.is_available(), "This test must run in an Aurora GPU-tile job"
+assert not torch.cuda.is_available(), "Aurora port must not use CUDA"
+assert jax.devices("sycl"), "Intel Extension for OpenXLA did not expose an XPU"
+assert Path(os.environ["AF2_DIR"]).is_dir(), "AF2 weights were not staged"
+
+model = AF2RewardModel(
+    protocol="binder",
+    af_params_dir=os.environ["AF2_DIR"],
+    reward_weights={"plddt": 1.0, "pae": 0.0},
+    use_multimer=True,
+    model_nums=[0],
+    num_recycles=1,
+    seed=7,
+)
+result = model.score(
+    pdb_path=os.environ["AF2_TEST_FIXTURE"],
+    binder_chain="W",
+    target_chain="V",
+    requires_grad=False,
+    save_pdb=True,
+    output_pdb_path=str(Path(os.environ["AF2_TEST_OUTPUT"]) / "af2_refolded.pdb"),
+)
+assert result["plddt"].numel() > 0
+refolded = Path(os.environ["AF2_TEST_OUTPUT"], "af2_refolded.pdb")
+assert refolded.is_file()
+
+# Intel OpenXLA lacks the SVD primitive inside JAX.  The Aurora port retains
+# JAX/SYCL scoring and restores coordinate-frame alignment afterward using the
+# Rust Kabsch implementation.  Verify that the saved target has been aligned
+# back to the source target frame.
+import numpy as np
+
+def ca_coordinates(path):
+    records = []
+    for line in Path(path).read_text().splitlines():
+        if line.startswith("ATOM  ") and line[12:16].strip() == "CA":
+            records.append((line[21], [float(line[30:38]), float(line[38:46]), float(line[46:54])]))
+    return records
+
+reference_ca = np.asarray([coords for chain, coords in ca_coordinates(os.environ["AF2_TEST_FIXTURE"]) if chain == "V"])
+refolded_ca = np.asarray([coords for chain, coords in ca_coordinates(refolded) if chain == "A"])
+assert reference_ca.shape == refolded_ca.shape and len(reference_ca) >= 3
+target_ca_rmsd = float(np.sqrt(np.square(reference_ca - refolded_ca).sum(axis=-1).mean()))
+assert target_ca_rmsd < 2.0, target_ca_rmsd
+print(f"af2_plddt_mean={result['plddt'].float().mean().item():.3f}")
+print(f"af2_rust_kabsch_target_ca_rmsd={target_ca_rmsd:.3f}")
+print("af2_reward_xpu_smoke=passed")
+PY

@@ -1,0 +1,52 @@
+#!/bin/bash
+# Added for the Aurora XPU port; see aurora/README.md.
+# Run a real ESMFold prediction on an Aurora XPU from the staged offline cache.
+# This is an installation check, not a scientifically meaningful fold.
+#PBS -A FRAME-IDP
+#PBS -q debug
+#PBS -l select=1
+# A compact sequence has ample headroom in 30 minutes and can backfill more
+# readily than a full debug-window request.
+#PBS -l walltime=00:30:00
+#PBS -l filesystems=flare
+#PBS -j oe
+
+set -euo pipefail
+project_root="${AURORA_PROJECT_ROOT:-/lus/flare/projects/FRAME-IDP/${USER:-${LOGNAME:-user}}}"
+repo_dir="${PROTEINA_REPO:-${PBS_O_WORKDIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}}"
+env_prefix="${PROTEINA_ENV:-${project_root}/envs/proteina-complexa}"
+output_dir="${repo_dir}/aurora/esmfold-xpu-smoke/${PBS_JOBID%%.*}"
+export ZE_FLAT_DEVICE_HIERARCHY=FLAT
+export ZE_AFFINITY_MASK="${ZE_AFFINITY_MASK:-0}"
+
+cd "${repo_dir}"
+source "${env_prefix}/bin/activate"
+mkdir -p "${output_dir}"
+export ESMFOLD_TEST_OUTPUT="${output_dir}"
+
+python - <<'PY'
+import os
+from pathlib import Path
+
+import torch
+from proteinfoundation.metrics.folding_models import run_esmfold
+
+assert torch.xpu.is_available(), "This test must run in an Aurora GPU-tile job"
+assert not torch.cuda.is_available(), "Aurora port must not use CUDA"
+assert Path(os.environ["ESMFOLD_DIR"]).is_dir(), "ESMFold cache was not staged"
+
+# Compact native sequence: enough to exercise tokenization, the folding trunk,
+# coordinate conversion, and PDB writing without claiming scientific validity.
+paths = run_esmfold(
+    ["MGSSHHHHHHSSGLVPRGSHMAMKETAAAKFERQHMDS"],
+    os.environ["ESMFOLD_TEST_OUTPUT"],
+    name="aurora_esmfold_smoke",
+    suffix="xpu",
+    cache_dir=os.environ["ESMFOLD_DIR"],
+    keep_outputs=True,
+)
+assert len(paths) == 1 and Path(paths[0]).is_file(), paths
+assert "ATOM" in Path(paths[0]).read_text(), paths[0]
+print(f"esmfold_xpu_pdb={paths[0]}")
+print("esmfold_xpu_smoke=passed")
+PY

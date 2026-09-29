@@ -1,0 +1,19 @@
+#!/bin/bash
+# Added for the Aurora XPU port; see aurora/README.md.
+#PBS -A FRAME-IDP
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:15:00
+#PBS -l filesystems=flare
+#PBS -j oe
+
+set -euo pipefail
+project_root="${AURORA_PROJECT_ROOT:-/lus/flare/projects/FRAME-IDP/${USER:-${LOGNAME:-user}}}"
+repo_dir="${PROTEINA_REPO:-${PBS_O_WORKDIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}}"
+env_prefix="${PROTEINA_ENV:-${project_root}/envs/proteina-complexa}"
+export ZE_FLAT_DEVICE_HIERARCHY=FLAT
+export ZE_AFFINITY_MASK="${ZE_AFFINITY_MASK:-0}"
+
+cd "${repo_dir}"
+source "${env_prefix}/bin/activate"
+python aurora/smoke_xpu.py

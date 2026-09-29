@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Added for the Aurora XPU port; see aurora/README.md.
+# Generated into the virtual environment by configure_venv_activation.sh.
+# It intentionally extends standard venv activation with Aurora's framework
+# runtime and the project-local cache policy.
+
+if ! type module >/dev/null 2>&1; then
+  echo "Aurora environment modules are unavailable in this shell." >&2
+  return 1 2>/dev/null || exit 1
+fi
+# Aurora's Lmod startup code probes optional shell variables.  Temporarily
+# relax nounset so normal HPC job scripts may safely use `set -u` before this
+# standard activation command.
+_proteina_restore_nounset=0
+case $- in
+  *u*) _proteina_restore_nounset=1; set +u ;;
+esac
+module load frameworks
+if [[ "${_proteina_restore_nounset}" == 1 ]]; then
+  set -u
+fi
+unset _proteina_restore_nounset
+
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/activate.base"
+source "__PROTEINA_RUNTIME_ENV__" "${VIRTUAL_ENV}"
+export PYTHONPATH="__PROTEINA_REPO__/src:${PYTHONPATH:-}"
+
+# Satisfy the upstream CLI guard without its CUDA-oriented initializer.
+export COMPLEXA_INIT="xpu"

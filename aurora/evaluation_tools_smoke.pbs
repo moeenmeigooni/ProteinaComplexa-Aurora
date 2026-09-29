@@ -1,0 +1,61 @@
+#!/bin/bash
+# Added for the Aurora XPU port; see aurora/README.md.
+# Validate the CPU evaluation tools that replace CUDA-only or unavailable
+# dependencies on Aurora. Outputs are runtime-validation artifacts only.
+#PBS -A FRAME-IDP
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=00:20:00
+#PBS -l filesystems=flare
+#PBS -j oe
+
+set -euo pipefail
+project_root="${AURORA_PROJECT_ROOT:-/lus/flare/projects/FRAME-IDP/${USER:-${LOGNAME:-user}}}"
+repo_dir="${PROTEINA_REPO:-${PBS_O_WORKDIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}}"
+env_prefix="${PROTEINA_ENV:-${project_root}/envs/proteina-complexa}"
+output_dir="${repo_dir}/aurora/evaluation-tools-smoke/${PBS_JOBID%%.*}"
+fixture="${repo_dir}/assets/target_data/alpha_proteo_targets/1bj1_cropped.pdb"
+
+cd "${repo_dir}"
+source "${env_prefix}/bin/activate"
+mkdir -p "${output_dir}"
+export EVALUATION_TOOLS_OUTPUT="${output_dir}"
+export EVALUATION_TOOLS_FIXTURE="${fixture}"
+
+foldseek version
+mmseqs version
+dssp --version
+
+python - <<'PY'
+import os
+from pathlib import Path
+
+from proteinfoundation.evaluation.binder_eval import compute_bioinformatics_metrics_single
+from proteinfoundation.metrics.diversity import diversity_foldseek, diversity_sequence_mmseqs
+from proteinfoundation.utils.biopython_utils import calc_ss_percentage
+
+fixture = os.environ["EVALUATION_TOOLS_FIXTURE"]
+output = Path(os.environ["EVALUATION_TOOLS_OUTPUT"])
+
+# Real SC + SASA through the public evaluation API (not merely its CLI).
+metrics = compute_bioinformatics_metrics_single(fixture, binder_chain="W", target_chain="V")
+assert metrics["binder_interface_sc"] > 0.8, metrics
+assert metrics["binder_interface_nres"] > 0, metrics
+print(f"bioinformatics_metrics={metrics}")
+
+# DSSP is consumed by the AlphaFold evaluation support routines.
+ss = calc_ss_percentage(fixture, {"dssp_path": os.environ["DSSP_EXEC"]}, chain_id="W", target_chain="V")
+# Individual percentages are rounded to two decimal places.
+assert abs(sum(ss[:3]) - 100.0) < 0.05, ss
+print(f"dssp_secondary_structure={ss}")
+
+# Both diversity methods run the project-local Foldseek and MMseqs2 binaries.
+foldseek = diversity_foldseek([fixture], tmp_path=str(output / "foldseek"), clean_tmp=True)
+mmseqs = diversity_sequence_mmseqs([fixture], tmp_path=str(output / "mmseqs"), clean_tmp=True)
+assert foldseek == (1.0, 1, 1), foldseek
+assert mmseqs == (1.0, 1, 1), mmseqs
+print(f"foldseek_diversity={foldseek}")
+print(f"mmseqs_diversity={mmseqs}")
+PY
+
+echo "evaluation_tools_smoke=passed"

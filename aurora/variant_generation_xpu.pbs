@@ -1,0 +1,51 @@
+#!/bin/bash
+# Added for the Aurora XPU port; see aurora/README.md.
+# Runtime smoke tests for the two non-protein-binder Complexa variants.
+# Each produces one intentionally low-step sample; these are installation
+# checks, not scientifically meaningful ligand or motif-binder designs.
+#PBS -A FRAME-IDP
+#PBS -q debug
+#PBS -l select=1
+# Low-step validation has completed in only a few minutes; keeping the request
+# short makes it practical to backfill in Aurora's debug queue.
+#PBS -l walltime=00:20:00
+#PBS -l filesystems=flare
+#PBS -j oe
+
+set -euo pipefail
+project_root="${AURORA_PROJECT_ROOT:-/lus/flare/projects/FRAME-IDP/${USER:-${LOGNAME:-user}}}"
+repo_dir="${PROTEINA_REPO:-${PBS_O_WORKDIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}}"
+env_prefix="${PROTEINA_ENV:-${project_root}/envs/proteina-complexa}"
+export ZE_FLAT_DEVICE_HIERARCHY=FLAT
+export ZE_AFFINITY_MASK="${ZE_AFFINITY_MASK:-0}"
+
+cd "${repo_dir}"
+source "${env_prefix}/bin/activate"
+
+# Ligand Complexa (one ligand-conditioned binder sample).
+complexa generate configs/search_ligand_binder_local_pipeline.yaml \
+  ++run_name=aurora_xpu_ligand_generate_smoke \
+  ++generation.task_name=39_7V11_LIGAND \
+  ++generation.dataloader.batch_size=1 \
+  ++generation.dataloader.dataset.nres.low=100 \
+  ++generation.dataloader.dataset.nres.high=100 \
+  ++generation.dataloader.dataset.nres.nsamples=1 \
+  ++generation.search.algorithm=single-pass \
+  ++generation.search.max_batch_size=1 \
+  ++generation.args.nsteps=2
+test -n "$(find inference/search_ligand_binder_local_pipeline_39_7V11_LIGAND_aurora_xpu_ligand_generate_smoke -type f -name '*.pdb' -print -quit)"
+
+# AME Complexa (one motif- and ligand-conditioned scaffold sample).
+complexa generate configs/search_ame_local_pipeline.yaml \
+  ++run_name=aurora_xpu_ame_generate_smoke \
+  ++generation.task_name=M0024_1nzy_v3 \
+  ++generation.dataloader.batch_size=1 \
+  ++generation.dataloader.dataset.nres.low=180 \
+  ++generation.dataloader.dataset.nres.high=180 \
+  ++generation.dataloader.dataset.nres.nsamples=1 \
+  ++generation.search.algorithm=single-pass \
+  ++generation.search.max_batch_size=1 \
+  ++generation.args.nsteps=2
+test -n "$(find inference/search_ame_local_pipeline_M0024_1nzy_v3_aurora_xpu_ame_generate_smoke -type f -name '*.pdb' -print -quit)"
+
+echo "variant_generation_xpu_smoke=passed"
