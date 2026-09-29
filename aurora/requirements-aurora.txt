@@ -1,5 +1,5 @@
 # Added for the Aurora XPU port; see aurora/README.md.
-# Installed with `pip --no-deps` by bootstrap_aurora.sh.
+# Installed with `pip --no-deps` by install_aurora.sh.
 #
 # The Aurora frameworks module is the owner of PyTorch and all Level Zero/XPU
 # libraries.  Never install `torch`, `torchvision`, `triton`, `pytorch-triton`,
