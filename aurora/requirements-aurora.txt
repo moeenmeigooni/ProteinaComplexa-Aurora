@@ -120,3 +120,7 @@ plotly
 narwhals
 seaborn
 wandb==0.23.1
+# The 2026.1 framework module exposes protobuf 7, while this W&B release
+# requires protobuf <7. Install its compatible runtime into the venv because
+# the Aurora profile is installed with --no-deps to preserve XPU PyTorch.
+protobuf>=3.19.0,<7
