@@ -54,7 +54,7 @@ test -s "$(find "${output_dir}/ligandmpnn/seqs" -type f -name '*.fa' -print -qui
 # TMol itself is CPU-only on Aurora.  Exercise its real score path while this
 # job has already proved native XPU operation for the generative components.
 cd "${repo_dir}"
-tmol_input="$(find "${repo_dir}/inference/search_binder_local_pipeline_01_PD1_aurora_xpu_generate_smoke" -type f -name '*.pdb' -print -quit)"
+tmol_input="${TMOL_TEST_PDB:-$(find "${repo_dir}/inference/search_binder_local_pipeline_01_PD1_aurora_xpu_generate_smoke" -type f -name '*.pdb' -print -quit)}"
 test -n "${tmol_input}"
 export TMOL_TEST_PDB="${tmol_input}"
 python - <<'PY'

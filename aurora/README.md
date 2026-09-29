@@ -80,6 +80,9 @@ That job performs one LigandMPNN design and one low-step RF3 fold on an XPU
 tile.  It is an installation test, not a scientifically meaningful prediction.
 Run `generate_smoke_xpu.pbs` successfully first: this job also evaluates the
 resulting real two-chain design with TMol's CPU-only interface-energy backend.
+If the smoke target PDB has missing side-chain atoms, set `TMOL_TEST_PDB` to a
+complete two-chain complex before submitting this job; otherwise it scores the
+generated structure automatically.
 TMol has no XPU kernel, so that one component intentionally runs on CPU while
 the generative and folding models remain on XPU.
 
